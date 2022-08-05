@@ -14,6 +14,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
@@ -636,6 +637,68 @@ public class QuerydslBasicTest {
     //BooleanExpression를 사용하여 조립하기.
     private BooleanExpression allEq(String usernameCond, Integer ageCond) {
         return usernameEq(usernameCond).and(ageEq(ageCond));
+    }
+
+    @Test
+    public void bulkUpdate() throws Exception {
+        // 이름 바꾸기
+        long count1 = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+        System.out.println("count1 = " + count1);
+
+        // Integer 더하기도 가능
+        long count2 = queryFactory
+                .update(member)
+                .set(member.age, member.age.add(1)) //minus는 없으므로 -1 하면됨
+                .execute();
+        System.out.println("count2 = " + count2);
+
+        //곱하기도 가능 .multiply()
+        long count3 = queryFactory
+                .update(member)
+                .set(member.age, member.age.multiply(1))
+                .execute();
+        System.out.println("count2 = " + count3);
+    }
+
+    //벌크 삭제
+    @Test
+    public void bulkDelete() throws Exception {
+        long count = queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+
+        System.out.println("count = " + count);
+    }
+
+    @Test
+    public void sqlFunction1() throws Exception {
+        List<String> result = queryFactory
+                .select(Expressions.stringTemplate("function('replace', {0}, {1}, {2})", member.username, "member", "M"))
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    public void sqlFunction2() throws Exception {
+        List<String> result = queryFactory
+                .select(member.username)
+                .from(member)
+//                .where(member.username.eq(Expressions.stringTemplate("function('lower', {0})", member.username)))
+                .where(member.username.eq(member.username.lower())) // 윗줄과 동일한 기능. 소문자로 바꿔 비교하기.
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
     }
 
 }
