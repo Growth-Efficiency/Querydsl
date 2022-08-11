@@ -84,8 +84,19 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                 .fetchResults();
 
         List<MemberTeamDto> content = results.getResults();
+        long total = results.getTotal();
 
-//        long total = results.getTotal();
+        return new PageImpl<>(content, pageable, total);
+    }
+
+    /**
+     * 복잡한 페이징
+     * 데이터 조회 쿼리와, 전체 카운트 쿼리를 분리
+     */
+    @Override
+    public Page<MemberTeamDto> searchPageComplex(MemberSearchCondition condition, Pageable pageable) {
+        List<MemberTeamDto> content = getMemberTeamDtos(condition, pageable);
+//        long total = getTotal(condition);
 //        return new PageImpl<>(content, pageable, total);
 
         JPAQuery<Member> countQuery = queryFactory
@@ -100,12 +111,20 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchCount);
     }
 
-    /**
-     * 복잡한 페이징
-     * 데이터 조회 쿼리와, 전체 카운트 쿼리를 분리
-     */
-    @Override
-    public Page<MemberTeamDto> searchPageComplex(MemberSearchCondition condition, Pageable pageable) {
+    private long getTotal(MemberSearchCondition condition) {
+        long total = queryFactory
+                .select(member)
+                .from(member)
+                .leftJoin(member.team, team)
+                .where(usernameEq(condition.getUsername()),
+                        teamNameEq(condition.getTeamName()),
+                        ageGoe(condition.getAgeGoe()),
+                        ageLoe(condition.getAgeLoe()))
+                .fetchCount();
+        return total;
+    }
+
+    private List<MemberTeamDto> getMemberTeamDtos(MemberSearchCondition condition, Pageable pageable) {
         List<MemberTeamDto> content = queryFactory
                 .select(new QMemberTeamDto(
                         member.id,
@@ -122,17 +141,6 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
-
-        long total = queryFactory
-                .select(member)
-                .from(member)
-                .leftJoin(member.team, team)
-                .where(usernameEq(condition.getUsername()),
-                        teamNameEq(condition.getTeamName()),
-                        ageGoe(condition.getAgeGoe()),
-                        ageLoe(condition.getAgeLoe()))
-                .fetchCount();
-
-        return new PageImpl<>(content, pageable, total);
+        return content;
     }
 }
